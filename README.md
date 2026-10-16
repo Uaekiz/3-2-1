@@ -14,15 +14,15 @@ Oyun; tarafsız bir **Hakem (Admin)** kontrol paneli, milisaniyeler içinde sonu
 
 ## Öne Çıkan Özellikler
 
-* ** Tamamen Çevrimdışı & Sıfır Gecikme:** Mobil veri veya internet bağlantısı gerektirmez. PC/Telefon Hotspot'u üzerinden saf `dart:io` WebSockets ile çalışır.
-* ** Otomatik Yerel Ağ Keşfi (UDP Beacon):** IP adresi girmeye gerek kalmadan, arka plandaki UDP yayını sayesinde oyuncular yalnızca **4 haneli oda kodunu** girerek saniyeler içinde lobiye bağlanır.
-* ** Optimize SQLite Veritabanı (~5.2 MB):** Transfermarkt açık veri setinden filtrelenmiş 750+ kulüp, 50.000+ oyuncu ve 60.000+ kariyer eşleşmesi cihaz üzerinde yerel olarak saklanır.
-* ** "Benjamin" Buzzer & Ters Progress Bar:** Cevap hakkını ilk kapan oyuncu için geri sayan dairesel süre göstergesi.
-* ** Hakem (Admin) Kontrol İstasyonu:**
+* Tamamen Çevrimdışı & Sıfır Gecikme: Mobil veri veya internet bağlantısı gerektirmez. PC/Telefon Hotspot'u üzerinden saf `dart:io` WebSockets ile çalışır.
+* Otomatik Yerel Ağ Keşfi (UDP Beacon): IP adresi girmeye gerek kalmadan, arka plandaki UDP yayını sayesinde oyuncular yalnızca **4 haneli oda kodunu** girerek saniyeler içinde lobiye bağlanır.
+* Optimize SQLite Veritabanı (~5.2 MB): Transfermarkt açık veri setinden filtrelenmiş 750+ kulüp, 50.000+ oyuncu ve 60.000+ kariyer eşleşmesi cihaz üzerinde yerel olarak saklanır.
+* "Benjamin" Buzzer & Ters Progress Bar: Cevap hakkını ilk kapan oyuncu için geri sayan dairesel süre göstergesi.
+* Hakem (Admin) Kontrol İstasyonu:
   * **Kaza Önleyici Onay:** Yanlışlıkla dokunmaları önlemek için 1 saniye basılı tutarak dolan "Doğru (+1)" ve "Yanlış" butonları.
   * **Milisaniyelik Canlı Doğrulama:** Hakem oyuncunun söylediği ismi yazdığı anda SQLite üzerinden anlık ortaklık sorgusu.
   * **Gizli İpucu Paneli:** Tıkanılan turlarda iki kulübün geçmişteki tüm ortak futbolcularını listeleyen hakem konsolu.
-* ** Sarı / Kırmızı Kart Kuralı:** Bir maç serisinde daha önce kullanılmış bir kulübü tekrar seçen oyuncu doğrudan sarı kart görür ve turu kaybeder. 2 sarı kart alan oyuncu kırmızı kartla cezalandırılır ve rakibe +1 puan yazılır.
+* Sarı / Kırmızı Kart Kuralı: Bir maç serisinde daha önce kullanılmış bir kulübü tekrar seçen oyuncu doğrudan sarı kart görür ve turu kaybeder. 2 sarı kart alan oyuncu kırmızı kartla cezalandırılır ve rakibe +1 puan yazılır.
 
 ---
 
