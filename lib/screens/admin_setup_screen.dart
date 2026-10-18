@@ -13,6 +13,8 @@ class AdminSetupScreen extends StatefulWidget {
 }
 
 class _AdminSetupScreenState extends State<AdminSetupScreen> {
+  GameFormat selectedFormat = GameFormat.clubVsClub;
+  bool keepCountryPickerOnFail = true;
   int targetScore = 5;
   int roundTime = 30; // 0 = Sınırsız
   int buzzerTime = 5;
@@ -44,12 +46,68 @@ class _AdminSetupScreenState extends State<AdminSetupScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionTitle('Oyun Modu'),
+        // Oyun Formatı Seçimi
+        _buildSectionTitle('Oyun Formatı'),
         Row(
           children: [
             Expanded(
               child: ChoiceChip(
-                label: const Center(child: Text('Takım Seçmeli')),
+                label: const Center(child: Text('Kulüp - Kulüp')),
+                selected: selectedFormat == GameFormat.clubVsClub,
+                onSelected: (val) =>
+                    setState(() => selectedFormat = GameFormat.clubVsClub),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: ChoiceChip(
+                label: const Center(child: Text('Ülke - Kulüp')),
+                selected: selectedFormat == GameFormat.countryVsClub,
+                onSelected: (val) =>
+                    setState(() => selectedFormat = GameFormat.countryVsClub),
+              ),
+            ),
+          ],
+        ),
+
+        // Ülke - Kulüp seçildiyse kural switch'i
+        if (selectedFormat == GameFormat.countryVsClub) ...[
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1E222A),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white12),
+            ),
+            child: SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text(
+                'Bilemezse Ülke Aynı Kişide Kalsın',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              subtitle: const Text(
+                'Kapalıysa pas geçildiğinde sıra diğer oyuncuya geçer',
+                style: TextStyle(color: Colors.white38, fontSize: 11),
+              ),
+              value: keepCountryPickerOnFail,
+              activeColor: const Color(0xFF00E676),
+              onChanged: (val) => setState(() => keepCountryPickerOnFail = val),
+            ),
+          ),
+        ],
+
+        const SizedBox(height: 20),
+        _buildSectionTitle('Takım / Eşleşme Belirleme'),
+        Row(
+          children: [
+            Expanded(
+              child: ChoiceChip(
+                label: const Center(child: Text('Seçmeli Mod')),
                 selected: !isRandomMode,
                 onSelected: (val) => setState(() => isRandomMode = !val),
               ),
@@ -57,7 +115,7 @@ class _AdminSetupScreenState extends State<AdminSetupScreen> {
             const SizedBox(width: 12),
             Expanded(
               child: ChoiceChip(
-                label: const Center(child: Text('Rastgele Takımlar')),
+                label: const Center(child: Text('Rastgele Mod')),
                 selected: isRandomMode,
                 onSelected: (val) => setState(() => isRandomMode = val),
               ),
@@ -114,6 +172,8 @@ class _AdminSetupScreenState extends State<AdminSetupScreen> {
               roundTime: roundTime,
               buzzerTime: buzzerTime,
               isRandomMode: isRandomMode,
+              format: selectedFormat,
+              keepCountryPickerOnFail: keepCountryPickerOnFail,
             );
             setState(() => isRoomCreated = true);
           },
@@ -187,7 +247,6 @@ class _AdminSetupScreenState extends State<AdminSetupScreen> {
           ],
         ),
         const SizedBox(height: 24),
-        // Lobi Dağılmadan Ayarları Güncelleme Alanı
         ExpansionTile(
           collapsedBackgroundColor: const Color(0xFF1E222A),
           backgroundColor: const Color(0xFF1E222A),

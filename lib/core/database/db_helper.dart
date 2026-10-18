@@ -125,4 +125,60 @@ class DbHelper {
     }
     return null;
   }
+
+  // Ülke arama (Autocomplete için en çok 20 sonuç döndürür)
+  Future<List<String>> searchCountries(String query) async {
+    final db = await database;
+    final results = await db.rawQuery(
+      '''
+      SELECT DISTINCT country 
+      FROM players 
+      WHERE country IS NOT NULL 
+        AND country != '' 
+        AND country LIKE ? 
+      ORDER BY country ASC 
+      LIMIT 20
+    ''',
+      ['%$query%'],
+    );
+
+    return results.map((row) => row['country'] as String).toList();
+  }
+
+  // Kulüp ve Ülke kesişimindeki futbolcuları getirir (Doğrulama ve İpucu için)
+  Future<List<Player>> getPlayersByClubAndCountry(
+    int clubId,
+    String country,
+  ) async {
+    final db = await database;
+    final results = await db.rawQuery(
+      '''
+      SELECT DISTINCT p.id, p.name
+      FROM players p
+      JOIN appearances a ON p.id = a.player_id
+      WHERE a.club_id = ? AND LOWER(p.country) = LOWER(?)
+      ORDER BY p.name ASC
+    ''',
+      [clubId, country],
+    );
+
+    return results.map((row) => Player.fromMap(row)).toList();
+  }
+
+  // Rastgele mod için en az 1 ortak oyuncusu garanti olan kulüp ve ülke çifti seçer
+  Future<Map<String, dynamic>?> getRandomClubAndCountry() async {
+    final db = await database;
+    final results = await db.rawQuery('''
+      SELECT c.id AS club_id, c.name AS club_name, c.country AS club_country, p.country AS player_country
+      FROM appearances a
+      JOIN clubs c ON a.club_id = c.id
+      JOIN players p ON a.player_id = p.id
+      WHERE p.country IS NOT NULL AND p.country != ''
+      ORDER BY RANDOM()
+      LIMIT 1
+    ''');
+
+    if (results.isEmpty) return null;
+    return results.first;
+  }
 }

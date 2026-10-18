@@ -18,12 +18,14 @@ class GameEvent {
 }
 
 // Olay Tipleri (Action Constants)
+// Olay Tipleri (Action Constants)
 class EventTypes {
   static const String joinRoom = 'JOIN_ROOM';
   static const String updateSettings = 'UPDATE_SETTINGS';
   static const String lobbyUpdate = 'LOBBY_UPDATE';
   static const String startRound = 'START_ROUND';
   static const String selectTeam = 'SELECT_TEAM';
+  static const String selectCountry = 'SELECT_COUNTRY';
   static const String teamsLocked = 'TEAMS_LOCKED';
   static const String trigger321 = 'TRIGGER_321';
   static const String buzzerPressed = 'BUZZER_PRESSED';
@@ -31,5 +33,5 @@ class EventTypes {
   static const String answerResult = 'ANSWER_RESULT';
   static const String yellowCard = 'YELLOW_CARD';
   static const String nextRound = 'NEXT_ROUND';
-  static const String gameOver = 'GAME_OVER';
+  static const String resetMatch = 'RESET_MATCH';
 }

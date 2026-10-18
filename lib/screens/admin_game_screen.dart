@@ -173,7 +173,6 @@ class _AdminGameScreenState extends State<AdminGameScreen> {
     );
   }
 
-  // Geçici Yer Tutucular (2. ve 3. Parçada dolduracağız)
   Widget _buildControlArea(GameState state, GameProvider provider) {
     return Container(
       width: double.infinity,
@@ -189,7 +188,7 @@ class _AdminGameScreenState extends State<AdminGameScreen> {
 
   Widget _buildPhaseContent(GameState state, GameProvider provider) {
     switch (state.phase) {
-      // 1. TAKIM SEÇİM AŞAMASI
+      // 1. TAKIM / ÜLKE SEÇİM AŞAMASI
       case GamePhase.teamSelection:
         final p1 = state.players.isNotEmpty ? state.players[0] : null;
         final p2 = state.players.length > 1 ? state.players[1] : null;
@@ -201,7 +200,7 @@ class _AdminGameScreenState extends State<AdminGameScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Text(
-              'TAKIM KİLİTLEME DURUMU',
+              'KİLİTLEME DURUMU',
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.bold,
@@ -328,7 +327,6 @@ class _AdminGameScreenState extends State<AdminGameScreen> {
               ),
             ),
             const Spacer(),
-            // 1 Saniye Basılı Tutmalı Onay Butonları
             Row(
               children: [
                 Expanded(
@@ -442,9 +440,15 @@ class _AdminGameScreenState extends State<AdminGameScreen> {
     }
   }
 
-  // Takım Kilitleme Kartı
+  // Takım / Ülke Kilitleme Kartı
   Widget _buildTeamLockStatus(PlayerState? player) {
     final isLocked = player?.isLocked ?? false;
+    String selectionText = 'Seçiyor...';
+    if (isLocked) {
+      selectionText =
+          player?.selectedCountry ?? player?.selectedClub?.name ?? 'Seçildi';
+    }
+
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -466,7 +470,7 @@ class _AdminGameScreenState extends State<AdminGameScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            isLocked ? (player?.selectedClub?.name ?? 'Seçildi') : 'Seçiyor...',
+            selectionText,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
@@ -479,8 +483,12 @@ class _AdminGameScreenState extends State<AdminGameScreen> {
     );
   }
 
-  // Ekranda Karşılaşan Takımlar Rozeti
+  // Ekranda Karşılaşan Takımlar / Ülke Rozeti
   Widget _buildVersusBadge(GameState state) {
+    final title = state.format == GameFormat.countryVsClub
+        ? '${state.activeCountry ?? 'Ülke'}  vs  ${state.clubA?.name ?? 'Takım'}'
+        : '${state.clubA?.name ?? 'Takım A'}  vs  ${state.clubB?.name ?? 'Takım B'}';
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
@@ -488,7 +496,7 @@ class _AdminGameScreenState extends State<AdminGameScreen> {
         borderRadius: BorderRadius.circular(10),
       ),
       child: Text(
-        '${state.clubA?.name ?? 'Takım A'}  vs  ${state.clubB?.name ?? 'Takım B'}',
+        title,
         textAlign: TextAlign.center,
         style: const TextStyle(
           fontWeight: FontWeight.bold,
@@ -500,7 +508,9 @@ class _AdminGameScreenState extends State<AdminGameScreen> {
   }
 
   Widget _buildVerificationArea(GameProvider provider, GameState state) {
-    final hasActiveClubs = state.clubA != null && state.clubB != null;
+    final hasActivePair = state.format == GameFormat.countryVsClub
+        ? (state.activeCountry != null && state.clubA != null)
+        : (state.clubA != null && state.clubB != null);
 
     return Container(
       width: double.infinity,
@@ -532,7 +542,7 @@ class _AdminGameScreenState extends State<AdminGameScreen> {
                   ),
                 ],
               ),
-              if (hasActiveClubs)
+              if (hasActivePair)
                 IconButton(
                   tooltip: 'Tüm Ortak Oyuncuları Gör',
                   icon: const Icon(
@@ -551,16 +561,16 @@ class _AdminGameScreenState extends State<AdminGameScreen> {
           // Arama Girişi
           TextField(
             controller: _playerSearchController,
-            enabled: hasActiveClubs,
+            enabled: hasActivePair,
             onChanged: (val) {
               if (val.trim().length >= 2) {
                 provider.searchPlayerInCurrentClubs(val.trim());
               }
             },
             decoration: InputDecoration(
-              hintText: hasActiveClubs
+              hintText: hasActivePair
                   ? 'Söylenen futbolcuyu ara...'
-                  : 'Takımlar yansıtılınca arama açılır...',
+                  : 'Eşleşme yansıtılınca arama açılır...',
               hintStyle: const TextStyle(fontSize: 13, color: Colors.white38),
               filled: true,
               fillColor: const Color(0xFF2A2F3D),
@@ -589,7 +599,6 @@ class _AdminGameScreenState extends State<AdminGameScreen> {
           ),
           const SizedBox(height: 8),
 
-          // Arama Sonuç Listesi / Durum
           Expanded(child: _buildVerificationResults(provider)),
         ],
       ),
@@ -619,7 +628,7 @@ class _AdminGameScreenState extends State<AdminGameScreen> {
                 Icon(Icons.cancel_outlined, color: Colors.redAccent, size: 16),
                 SizedBox(width: 6),
                 Text(
-                  'Bu iki takımda ortak oynamamış!',
+                  'Bu eşleşmede ortak oynamamış!',
                   style: TextStyle(
                     color: Colors.redAccent,
                     fontSize: 12,
@@ -682,7 +691,6 @@ class _AdminGameScreenState extends State<AdminGameScreen> {
   }
 
   // Hakem İpucu Alt Paneli (Bottom Sheet)
-  // Hakem İpucu Alt Paneli (Bottom Sheet)
   void _showHintsModal(
     BuildContext context,
     GameProvider provider,
@@ -694,16 +702,14 @@ class _AdminGameScreenState extends State<AdminGameScreen> {
 
     showModalBottomSheet(
       context: context,
-      isScrollControlled: true, // Ekran yüksekliğini kontrol edebilmek için
+      isScrollControlled: true,
       backgroundColor: const Color(0xFF1E222A),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (ctx) {
         return SizedBox(
-          height:
-              MediaQuery.of(context).size.height *
-              0.65, // Ekranın %65'ini kaplasın
+          height: MediaQuery.of(context).size.height * 0.65,
           child: Padding(
             padding: const EdgeInsets.all(20),
             child: Column(
@@ -727,7 +733,9 @@ class _AdminGameScreenState extends State<AdminGameScreen> {
                   ],
                 ),
                 Text(
-                  '${state.clubA?.name} & ${state.clubB?.name}',
+                  state.format == GameFormat.countryVsClub
+                      ? '${state.activeCountry} & ${state.clubA?.name}'
+                      : '${state.clubA?.name} & ${state.clubB?.name}',
                   style: const TextStyle(fontSize: 12, color: Colors.white38),
                 ),
                 const Divider(color: Colors.white12, height: 20),
@@ -799,9 +807,7 @@ class _HoldButtonState extends State<_HoldButton>
     _controller =
         AnimationController(
           vsync: this,
-          duration: const Duration(
-            milliseconds: 1000,
-          ), // 1 saniye basılı tutma süresi
+          duration: const Duration(milliseconds: 1000),
         )..addStatusListener((status) {
           if (status == AnimationStatus.completed) {
             widget.onConfirmed();
@@ -837,7 +843,6 @@ class _HoldButtonState extends State<_HoldButton>
             ),
             child: Stack(
               children: [
-                // 1 Saniye Boyunca Dolan Dolgu Efekti
                 FractionallySizedBox(
                   widthFactor: _controller.value,
                   alignment: Alignment.centerLeft,
@@ -848,7 +853,6 @@ class _HoldButtonState extends State<_HoldButton>
                     ),
                   ),
                 ),
-                // Buton Yazısı ve İkonu
                 Center(
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,

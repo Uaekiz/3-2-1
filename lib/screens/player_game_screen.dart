@@ -18,14 +18,23 @@ class _PlayerGameScreenState extends State<PlayerGameScreen> {
   static const Color darkCard = Color(0xFF1E222A);
   static const Color yellow = Color(0xFFFFD600);
 
+  // Takım arama durumu
   Club? _selectedClub;
   List<Club> _searchResults = [];
-  bool _isSearching = false;
+  bool _isSearchingClub = false;
   final TextEditingController _teamSearchController = TextEditingController();
+
+  // Ülke arama durumu (Ülke - Takım modu için)
+  String? _selectedCountry;
+  List<String> _countrySearchResults = [];
+  bool _isSearchingCountry = false;
+  final TextEditingController _countrySearchController =
+      TextEditingController();
 
   @override
   void dispose() {
     _teamSearchController.dispose();
+    _countrySearchController.dispose();
     super.dispose();
   }
 
@@ -66,11 +75,8 @@ class _PlayerGameScreenState extends State<PlayerGameScreen> {
             children: [
               _buildScoreboard(state, provider),
               const SizedBox(height: 24),
-
               Expanded(child: _buildGameArea(state, provider)),
-
               const SizedBox(height: 16),
-
               _buildBottomStatus(state),
             ],
           ),
@@ -156,7 +162,6 @@ class _PlayerGameScreenState extends State<PlayerGameScreen> {
           ),
         ),
         const SizedBox(height: 6),
-        // 2 Adet Sarı Kart Slotu
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -181,15 +186,12 @@ class _PlayerGameScreenState extends State<PlayerGameScreen> {
     );
   }
 
-  // Şimdilik oyun aşamasına göre temel içerik.
-  // Sonraki parçalarda takım seçimi ve Benjamin burada
-  // gerçek işlevleriyle yer alacak.
   Widget _buildGameArea(GameState state, GameProvider provider) {
     switch (state.phase) {
       case GamePhase.lobby:
         return _buildMessage(
           icon: Icons.hourglass_top_rounded,
-          title: 'Oda bekleniyor',
+          title: 'Oda Bekleniyor',
           subtitle: 'Admin oyunu başlattığında burada olacaksın.',
         );
 
@@ -198,12 +200,12 @@ class _PlayerGameScreenState extends State<PlayerGameScreen> {
             ? _buildMessage(
                 icon: Icons.casino_outlined,
                 title: 'Rastgele Mod',
-                subtitle: 'Admin takımları yansıtana kadar bekle.',
+                subtitle: 'Admin eşleşmeyi yansıtana kadar bekle.',
               )
-            : _buildTeamSelection(state, provider);
+            : _buildSelectionArea(state, provider);
 
       case GamePhase.countdown321:
-        return _build321Countdown();
+        return _build321Countdown(state);
 
       case GamePhase.answering:
       case GamePhase.buzzerActive:
@@ -251,7 +253,6 @@ class _PlayerGameScreenState extends State<PlayerGameScreen> {
     );
   }
 
-  // Alt durum göstergesi.
   Widget _buildBottomStatus(GameState state) {
     final isUnlimited = state.roundTime == 0;
 
@@ -281,15 +282,21 @@ class _PlayerGameScreenState extends State<PlayerGameScreen> {
     );
   }
 
-  Widget _buildTeamSelection(GameState state, GameProvider provider) {
-    // Oyuncunun kendi durumunu bul
+  // Takım veya Ülke Seçim Ekranı
+  Widget _buildSelectionArea(GameState state, GameProvider provider) {
     final myPlayer = state.players.firstWhere(
       (p) => p.id == provider.myPlayerId,
       orElse: () => PlayerState(id: '', name: ''),
     );
 
-    // Takımı zaten kilitlediyse bekleme kartı göster
+    // Kilitlendiyse bekleme kartı göster
     if (myPlayer.isLocked) {
+      final lockedTitle =
+          myPlayer.selectedCountry ??
+          myPlayer.selectedClub?.name ??
+          'Seçim Kilitlendi';
+      final isCountry = myPlayer.selectedCountry != null;
+
       return Container(
         width: double.infinity,
         padding: const EdgeInsets.all(24),
@@ -301,12 +308,16 @@ class _PlayerGameScreenState extends State<PlayerGameScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.lock_rounded, size: 64, color: neonGreen),
+            Icon(
+              isCountry ? Icons.flag_circle_rounded : Icons.lock_rounded,
+              size: 64,
+              color: neonGreen,
+            ),
             const SizedBox(height: 20),
             Text(
-              myPlayer.selectedClub?.name ?? 'Takım Kilitlendi',
+              lockedTitle,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
             ),
             const SizedBox(height: 10),
             const Text(
@@ -319,7 +330,11 @@ class _PlayerGameScreenState extends State<PlayerGameScreen> {
       );
     }
 
-    // Henüz kilitlemediyse arama ve seçim ekranı
+    // Ülke - Kulüp modunda bu oyuncu ülke mi takım mı seçecek?
+    final bool isCountryPicker =
+        state.format == GameFormat.countryVsClub &&
+        state.countryPickerPlayerId == provider.myPlayerId;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -331,9 +346,43 @@ class _PlayerGameScreenState extends State<PlayerGameScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
-            'AKLINDAKİ TAKIMI SEÇ',
-            style: TextStyle(
+          // Rol Bildirim Rozeti (Ülke - Kulüp modu ise)
+          if (state.format == GameFormat.countryVsClub)
+            Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: neonGreen.withAlpha(25),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: neonGreen.withAlpha(80)),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    isCountryPicker ? Icons.flag_rounded : Icons.shield_rounded,
+                    color: neonGreen,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      isCountryPicker
+                          ? 'Bu tur ÜLKE seçme sırası sende!'
+                          : 'Bu tur TAKIM seçme sırası sende!',
+                      style: const TextStyle(
+                        color: neonGreen,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+          Text(
+            isCountryPicker ? 'BİR ÜLKE SEÇ' : 'AKLINDAKİ TAKIMI SEÇ',
+            style: const TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.bold,
               letterSpacing: 1.5,
@@ -341,23 +390,47 @@ class _PlayerGameScreenState extends State<PlayerGameScreen> {
             ),
           ),
           const SizedBox(height: 12),
+
+          // Arama Girişi (Ülke veya Takım)
           TextField(
-            controller: _teamSearchController,
+            controller: isCountryPicker
+                ? _countrySearchController
+                : _teamSearchController,
             onChanged: (val) async {
-              if (val.trim().length >= 2) {
-                setState(() => _isSearching = true);
-                final results = await DbHelper.instance.searchClubs(val.trim());
-                setState(() {
-                  _searchResults = results;
-                  _isSearching = false;
-                });
+              final query = val.trim();
+              if (query.length >= 2) {
+                if (isCountryPicker) {
+                  setState(() => _isSearchingCountry = true);
+                  final results = await DbHelper.instance.searchCountries(
+                    query,
+                  );
+                  setState(() {
+                    _countrySearchResults = results;
+                    _isSearchingCountry = false;
+                  });
+                } else {
+                  setState(() => _isSearchingClub = true);
+                  final results = await DbHelper.instance.searchClubs(query);
+                  setState(() {
+                    _searchResults = results;
+                    _isSearchingClub = false;
+                  });
+                }
               } else {
-                setState(() => _searchResults = []);
+                setState(() {
+                  _searchResults = [];
+                  _countrySearchResults = [];
+                });
               }
             },
             decoration: InputDecoration(
-              hintText: 'Takım ara (örn: Ajax, Porto, Trabzon)...',
-              prefixIcon: const Icon(Icons.search, color: neonGreen),
+              hintText: isCountryPicker
+                  ? 'Ülke ara (örn: Nigeria, Brazil, Turkey)...'
+                  : 'Takım ara (örn: Ajax, Porto, Trabzon)...',
+              prefixIcon: Icon(
+                isCountryPicker ? Icons.public : Icons.search,
+                color: neonGreen,
+              ),
               filled: true,
               fillColor: const Color(0xFF2A2F3D),
               border: OutlineInputBorder(
@@ -367,81 +440,28 @@ class _PlayerGameScreenState extends State<PlayerGameScreen> {
             ),
           ),
           const SizedBox(height: 10),
-          // Seçilen Takım Göstergesi
-          if (_selectedClub != null)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              margin: const EdgeInsets.only(bottom: 8),
-              decoration: BoxDecoration(
-                color: neonGreen.withAlpha(38),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: neonGreen),
-              ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.check_circle_outline,
-                    color: neonGreen,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      _selectedClub!.name,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          // Arama Sonuçları Listesi
+
+          // Seçim Göstergesi
+          if (isCountryPicker && _selectedCountry != null)
+            _buildSelectedBadge(_selectedCountry!),
+          if (!isCountryPicker && _selectedClub != null)
+            _buildSelectedBadge(_selectedClub!.name),
+
+          // Arama Sonuçları
           Expanded(
-            child: _isSearching
-                ? const Center(
-                    child: CircularProgressIndicator(color: neonGreen),
-                  )
-                : ListView.builder(
-                    itemCount: _searchResults.length,
-                    itemBuilder: (context, index) {
-                      final club = _searchResults[index];
-                      final isCurrent = _selectedClub?.id == club.id;
-                      return ListTile(
-                        dense: true,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        tileColor: isCurrent
-                            ? const Color(0xFF2A2F3D)
-                            : Colors.transparent,
-                        title: Text(
-                          club.name,
-                          style: const TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                        subtitle: Text(
-                          club.country,
-                          style: const TextStyle(
-                            color: Colors.white38,
-                            fontSize: 11,
-                          ),
-                        ),
-                        onTap: () {
-                          setState(() {
-                            _selectedClub = club;
-                            _searchResults = [];
-                            _teamSearchController.text = club.name;
-                          });
-                        },
-                      );
-                    },
-                  ),
+            child: isCountryPicker
+                ? _buildCountrySearchResults()
+                : _buildClubSearchResults(),
           ),
           const SizedBox(height: 8),
+
+          // Kilitle Butonu
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: _selectedClub != null
+              backgroundColor:
+                  (isCountryPicker
+                      ? _selectedCountry != null
+                      : _selectedClub != null)
                   ? neonGreen
                   : Colors.grey.shade800,
               foregroundColor: Colors.black,
@@ -450,14 +470,30 @@ class _PlayerGameScreenState extends State<PlayerGameScreen> {
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
-            onPressed: _selectedClub != null
-                ? () {
-                    provider.lockSelectedClub(_selectedClub!);
-                  }
-                : null,
-            child: const Text(
-              'TAKIMI KİLİTLE',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+            onPressed: () {
+              if (isCountryPicker) {
+                if (_selectedCountry != null) {
+                  provider.lockSelectedCountry(_selectedCountry!);
+                  setState(() {
+                    _selectedCountry = null;
+                    _countrySearchResults = [];
+                    _countrySearchController.clear();
+                  });
+                }
+              } else {
+                if (_selectedClub != null) {
+                  provider.lockSelectedClub(_selectedClub!);
+                  setState(() {
+                    _selectedClub = null;
+                    _searchResults = [];
+                    _teamSearchController.clear();
+                  });
+                }
+              }
+            },
+            child: Text(
+              isCountryPicker ? 'ÜLKEYİ KİLİTLE' : 'TAKIMI KİLİTLE',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
             ),
           ),
         ],
@@ -465,7 +501,99 @@ class _PlayerGameScreenState extends State<PlayerGameScreen> {
     );
   }
 
-  Widget _build321Countdown() {
+  Widget _buildSelectedBadge(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: neonGreen.withAlpha(38),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: neonGreen),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.check_circle_outline, color: neonGreen, size: 20),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildClubSearchResults() {
+    if (_isSearchingClub) {
+      return const Center(child: CircularProgressIndicator(color: neonGreen));
+    }
+    return ListView.builder(
+      itemCount: _searchResults.length,
+      itemBuilder: (context, index) {
+        final club = _searchResults[index];
+        final isCurrent = _selectedClub?.id == club.id;
+        return ListTile(
+          dense: true,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          tileColor: isCurrent ? const Color(0xFF2A2F3D) : Colors.transparent,
+          title: Text(
+            club.name,
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+          subtitle: Text(
+            club.country,
+            style: const TextStyle(color: Colors.white38, fontSize: 11),
+          ),
+          onTap: () {
+            setState(() {
+              _selectedClub = club;
+              _searchResults = [];
+              _teamSearchController.text = club.name;
+            });
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildCountrySearchResults() {
+    if (_isSearchingCountry) {
+      return const Center(child: CircularProgressIndicator(color: neonGreen));
+    }
+    return ListView.builder(
+      itemCount: _countrySearchResults.length,
+      itemBuilder: (context, index) {
+        final country = _countrySearchResults[index];
+        final isCurrent = _selectedCountry == country;
+        return ListTile(
+          dense: true,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          tileColor: isCurrent ? const Color(0xFF2A2F3D) : Colors.transparent,
+          leading: const Icon(Icons.public, color: Colors.white54, size: 18),
+          title: Text(
+            country,
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+          onTap: () {
+            setState(() {
+              _selectedCountry = country;
+              _countrySearchResults = [];
+              _countrySearchController.text = country;
+            });
+          },
+        );
+      },
+    );
+  }
+
+  Widget _build321Countdown(GameState state) {
+    final isCountryMod = state.format == GameFormat.countryVsClub;
+
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -473,12 +601,12 @@ class _PlayerGameScreenState extends State<PlayerGameScreen> {
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: neonGreen.withAlpha(100), width: 2),
       ),
-      child: const Column(
+      child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.bolt, size: 72, color: yellow),
-          SizedBox(height: 20),
-          Text(
+          const Icon(Icons.bolt, size: 72, color: yellow),
+          const SizedBox(height: 20),
+          const Text(
             '3 • 2 • 1',
             style: TextStyle(
               fontSize: 64,
@@ -487,10 +615,10 @@ class _PlayerGameScreenState extends State<PlayerGameScreen> {
               color: neonGreen,
             ),
           ),
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
           Text(
-            'TAKIMLAR YANSIYOR!',
-            style: TextStyle(
+            isCountryMod ? 'ÜLKE & TAKIM YANSIYOR!' : 'TAKIMLAR YANSIYOR!',
+            style: const TextStyle(
               fontSize: 16,
               letterSpacing: 3,
               fontWeight: FontWeight.bold,
@@ -507,7 +635,6 @@ class _PlayerGameScreenState extends State<PlayerGameScreen> {
     final isMyTurn = state.buzzerPlayerId == provider.myPlayerId;
     final someoneElseTurn = isBuzzerActive && !isMyTurn;
 
-    // Basan oyuncunun adını bul
     final activePlayerName = state.players
         .firstWhere(
           (p) => p.id == state.buzzerPlayerId,
@@ -515,14 +642,22 @@ class _PlayerGameScreenState extends State<PlayerGameScreen> {
         )
         .name;
 
-    // Ters progress bar oranı (kalan süre / toplam süre)
     final progress = state.buzzerTime > 0
         ? (state.remainingBuzzerTime / state.buzzerTime).clamp(0.0, 1.0)
         : 0.0;
 
+    // Karşılaşma Başlığı
+    final String leftTitle = state.format == GameFormat.countryVsClub
+        ? (state.activeCountry ?? 'Ülke')
+        : (state.clubA?.name ?? 'Takım A');
+
+    final String rightTitle = state.format == GameFormat.countryVsClub
+        ? (state.clubA?.name ?? 'Takım')
+        : (state.clubB?.name ?? 'Takım B');
+
     return Column(
       children: [
-        // 1. Karşılaşan İki Takım Paneli
+        // 1. Karşılaşma Paneli
         Container(
           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
           decoration: BoxDecoration(
@@ -534,7 +669,7 @@ class _PlayerGameScreenState extends State<PlayerGameScreen> {
             children: [
               Expanded(
                 child: Text(
-                  state.clubA?.name ?? 'Takım A',
+                  leftTitle,
                   textAlign: TextAlign.center,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -557,7 +692,7 @@ class _PlayerGameScreenState extends State<PlayerGameScreen> {
               ),
               Expanded(
                 child: Text(
-                  state.clubB?.name ?? 'Takım B',
+                  rightTitle,
                   textAlign: TextAlign.center,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -582,7 +717,6 @@ class _PlayerGameScreenState extends State<PlayerGameScreen> {
           child: Stack(
             alignment: Alignment.center,
             children: [
-              // Ters Progress Bar (Dairesel)
               if (isBuzzerActive)
                 SizedBox(
                   width: 220,
@@ -596,7 +730,6 @@ class _PlayerGameScreenState extends State<PlayerGameScreen> {
                     ),
                   ),
                 ),
-              // Buton Gövdesi
               Container(
                 width: 190,
                 height: 190,
@@ -660,7 +793,6 @@ class _PlayerGameScreenState extends State<PlayerGameScreen> {
   Widget _buildRoundEndedArea(GameProvider provider) {
     final warning = provider.yellowCardWarning;
 
-    // Eğer sarı kart kuralı tetiklendiyse dev sarı kart bas
     if (warning != null) {
       return Container(
         width: double.infinity,
@@ -718,7 +850,6 @@ class _PlayerGameScreenState extends State<PlayerGameScreen> {
       );
     }
 
-    // Normal tur sonu (Biri bildi veya süre bitti)
     return _buildMessage(
       icon: Icons.flag_rounded,
       title: 'TUR SONA ERDİ',
@@ -727,7 +858,6 @@ class _PlayerGameScreenState extends State<PlayerGameScreen> {
   }
 
   Widget _buildGameOverArea(GameState state) {
-    // En yüksek puanı alanı bul
     PlayerState? winner;
     if (state.players.isNotEmpty) {
       winner = state.players.reduce(
